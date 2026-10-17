@@ -17,6 +17,8 @@ Every answer comes with the graph path behind it.
 
 **Live demo:** https://recall-desk.onrender.com (Render free tier + FalkorDB Cloud; the first load can take about a minute while the server wakes up)
 
+**Blog post:** [Recall Desk on dev.to](https://dev.to/pratheeksh7s/recall-desk-three-ai-support-agents-that-share-one-memory-and-the-memory-is-a-graph-11j1)
+
 **Demo video:** [docs/demo.mp4](https://github.com/Pratheeksh-7S/Recall-Desk-/raw/main/docs/demo.mp4) (2 minutes, captioned; regenerate with `scripts/record_demo.cjs`)
 
 ## Why the graph is load-bearing
