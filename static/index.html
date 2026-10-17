@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recall Desk</title>
+<script src="/static/vendor/vis-network.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --panel2: #1e222b; --line: #2a2f3a; --text: #e6e8ee; --muted: #8b93a4;
+    --accent: #ff6b4a; --ok: #3ccf91; --warn: #f5b841; --blue: #5aa9ff; --violet: #b18cff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; height: 100vh; display: flex; flex-direction: column; }
+  header { display: flex; align-items: center; gap: 14px; padding: 10px 18px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: 17px; margin: 0; letter-spacing: .2px; }
+  header h1 span { color: var(--accent); }
+  .badge { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--panel2); border: 1px solid var(--line); color: var(--muted); }
+  header .spacer { flex: 1; }
+  select, button, input { font: inherit; color: var(--text); background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+  button { cursor: pointer; } button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  main { flex: 1; display: grid; grid-template-columns: 270px minmax(360px, 1fr) minmax(420px, 1.25fr); min-height: 0; }
+  aside, section { min-height: 0; overflow: auto; }
+  aside { border-right: 1px solid var(--line); padding: 14px; background: var(--panel); }
+  aside h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 18px 0 8px; }
+  aside label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  aside select { width: 100%; }
+  .mem { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 13px; }
+  .mem small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .kind { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; padding: 1px 6px; border-radius: 4px; margin-right: 4px; }
+  .k-promise { background: #3b2a12; color: var(--warn); } .k-fact { background: #13283d; color: var(--blue); }
+  .k-preference, .k-context { background: #26203b; color: var(--violet); }
+  .k-open, .k-reopened { background: #3b1a14; color: var(--accent); } .k-resolved { background: #12332a; color: var(--ok); }
+  #chat { display: flex; flex-direction: column; border-right: 1px solid var(--line); }
+  #log { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .msg { max-width: 92%; padding: 10px 12px; border-radius: 12px; white-space: pre-wrap; }
+  .msg.customer { align-self: flex-end; background: #2b3242; border-bottom-right-radius: 3px; }
+  .msg.agent { align-self: flex-start; background: var(--panel2); border: 1px solid var(--line); border-bottom-left-radius: 3px; }
+  .who { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+  .who.triage { color: var(--violet); } .who.billing { color: var(--warn); } .who.technical { color: var(--blue); }
+  .meta { font-size: 11px; color: var(--muted); margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .meta button { font-size: 11px; padding: 2px 8px; }
+  .outcome { color: var(--ok); }
+  form { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
+  form input { flex: 1; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 12px; }
+  .chips button { font-size: 12px; padding: 4px 9px; border-radius: 99px; color: var(--muted); }
+  #right { display: flex; flex-direction: column; }
+  .tabs { display: flex; gap: 2px; padding: 8px 10px 0; border-bottom: 1px solid var(--line); }
+  .tabs button { border: none; background: none; border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); padding: 8px 12px; }
+  .tabs button.on { color: var(--text); border-bottom-color: var(--accent); }
+  .pane { flex: 1; min-height: 0; display: none; overflow: auto; }
+  .pane.on { display: block; }
+  #net, #memnet { width: 100%; height: 100%; min-height: 420px; }
+  .hint { color: var(--muted); padding: 24px; text-align: center; }
+  .step { border-left: 3px solid var(--line); margin: 10px 14px; padding: 4px 0 4px 10px; }
+  .step.write { border-left-color: var(--accent); }
+  .step .h { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .step .a { font-weight: 600; } .step .d { color: var(--muted); font-size: 13px; }
+  .step pre { background: #0b0d11; border: 1px solid var(--line); border-radius: 6px; padding: 8px; font-size: 12px; overflow: auto; margin: 6px 0 0; color: #c9d1e3; }
+  .step details summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px 14px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } aside, #chat { border-right: none; } #right { min-height: 520px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Recall<span>Desk</span></h1>
+  <span class="badge">FalkorDB shared agent memory</span>
+  <span class="spacer"></span>
+  <span class="badge" id="llm">LLM: …</span>
+  <button id="reset" title="Re-seed the demo data">Reset demo</button>
+</header>
+<main>
+  <aside>
+    <label>Company (one FalkorDB graph each)</label>
+    <select id="tenant"></select>
+    <label>Customer</label>
+    <select id="customer"></select>
+    <div style="margin-top:10px"><button class="primary" id="newSession" style="width:100%">Start new session</button></div>
+    <h3>What the desk remembers</h3>
+    <div id="memories"><div class="hint">No memories yet.</div></div>
+    <h3>Tickets</h3>
+    <div id="tickets"><div class="hint">No tickets yet.</div></div>
+  </aside>
+  <section id="chat">
+    <div id="log"></div>
+    <div class="chips" id="chips"></div>
+    <form id="form"><input id="input" placeholder="Write as the customer…" autocomplete="off"><button class="primary">Send</button></form>
+  </section>
+  <section id="right">
+    <div class="tabs">
+      <button data-pane="path" class="on">Graph path</button>
+      <button data-pane="trace">Agent trace</button>
+      <button data-pane="mem">Memory graph</button>
+    </div>
+    <div class="pane on" id="pane-path">
+      <div class="legend" id="legend"></div>
+      <div id="net"><div class="hint">Send a message to see the subgraph behind the answer.</div></div>
+    </div>
+    <div class="pane" id="pane-trace"><div id="trace"><div class="hint">Every step each agent took, with the Cypher it ran.</div></div></div>
+    <div class="pane" id="pane-mem"><div id="memnet"></div></div>
+  </section>
+</main>
+<script>
+const COLORS = {Customer:'#ff6b4a', Plan:'#8b93a4', Feature:'#5aa9ff', Service:'#3ccf91', Incident:'#ff4d6d', Region:'#6c7486',
+  Invoice:'#f5b841', PaymentMethod:'#c9a14a', Article:'#9fd3ff', Ticket:'#ff9f6b', Agent:'#b18cff', Memory:'#e3c6ff',
+  Session:'#4f5a70', Handoff:'#d88bff', Procedure:'#7be0b8', Refund:'#ffd27a', Topic:'#a0a8b8', Turn:'#39404f'};
+const SUGGEST = ["Hi, I think I was charged twice this month", "Our Bulk Export has been stuck in queued for hours, urgent!",
+  "I prefer email, by the way", "Any update on my refund?", "File Sync keeps saying waiting for server", "My payment failed, why?"];
+const $ = s => document.querySelector(s);
+let state = {tenant: null, customer: null, session: null, tenants: []};
+let net = null, memnet = null;
+
+async function api(path, body) {
+  const r = await fetch(path, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)} : {});
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function addMsg(role, agent, text, meta) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  d.innerHTML = (role === 'agent' ? `<div class="who ${agent}">${agent} agent</div>` : '') + esc(text);
+  if (meta) d.appendChild(meta);
+  $('#log').appendChild(d); $('#log').scrollTop = 1e9;
+  return d;
+}
+
+function renderMemory(m) {
+  const mem = m.memories || [], tk = m.tickets || [];
+  $('#memories').innerHTML = mem.length ? mem.map(x => `<div class="mem"><span class="kind k-${x.kind}">${x.kind}</span>${esc(x.text)}<small>written by ${x.by} agent${x.hits > 1 ? ` · seen ${x.hits}×` : ''}</small></div>`).join('') : '<div class="hint">No memories yet.</div>';
+  $('#tickets').innerHTML = tk.length ? tk.map(t => `<div class="mem"><span class="kind k-${t.status}">${t.status}</span>${esc(t.summary)}<small>${t.id} · ${t.topic} · owner: ${t.owner}</small></div>`).join('') : '<div class="hint">No tickets yet.</div>';
+}
+
+function drawGraph(el, g, highlight) {
+  if (!g || !g.nodes.length) { el.innerHTML = '<div class="hint">No graph elements for this step.</div>'; return null; }
+  el.innerHTML = '';
+  const nodes = g.nodes.map(n => ({id: n.id, label: n.caption.length > 28 ? n.caption.slice(0, 26) + '…' : n.caption,
+    title: n.label + '\n' + Object.entries(n.props).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(' → ') : v}`).join('\n'),
+    color: {background: COLORS[n.label] || '#888', border: '#0f1115', highlight: {background: '#fff', border: COLORS[n.label]}},
+    font: {color: '#e6e8ee', size: 13}, shape: 'dot', size: n.label === 'Customer' ? 20 : (n.label === 'Incident' ? 18 : 12)}));
+  const edges = g.edges.map(e => ({id: e.id, from: e.src, to: e.dst, label: e.type, arrows: 'to',
+    font: {color: '#8b93a4', size: 10, strokeWidth: 0}, color: {color: '#3a4150', highlight: '#ff6b4a'}, smooth: {type: 'dynamic'}}));
+  const nw = new vis.Network(el, {nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges)},
+    {physics: {solver: 'forceAtlas2Based', forceAtlas2Based: {gravitationalConstant: -60, springLength: 110}, stabilization: {iterations: 150}},
+     interaction: {hover: true, tooltipDelay: 80}});
+  $('#legend').innerHTML = [...new Set(g.nodes.map(n => n.label))].map(l => `<span><i style="background:${COLORS[l] || '#888'}"></i>${l}</span>`).join('');
+  return nw;
+}
+
+function renderTrace(steps) {
+  $('#trace').innerHTML = steps.map((s, i) => `<div class="step ${s.kind}">
+    <div class="h"><span class="who ${s.agent}">${s.agent}</span><span class="a">${i + 1}. ${esc(s.action)}${s.tool ? ` · <code>${s.tool}</code>` : ''}</span>
+    ${s.ms != null ? `<span class="badge">${s.ms} ms · ${s.row_count} rows</span>` : ''}${s.kind === 'write' ? '<span class="badge">graph write</span>' : ''}</div>
+    <div class="d">${esc(s.detail)}</div>
+    ${s.cypher ? `<details><summary>Cypher + params</summary><pre>${esc(s.cypher)}\n\n${esc(JSON.stringify(s.params))}</pre></details>` : ''}
+    ${s.rows && s.rows.length ? `<details><summary>Rows</summary><pre>${esc(JSON.stringify(s.rows, null, 1))}</pre></details>` : ''}
+  </div>`).join('');
+}
+
+function handle(res) {
+  const meta = document.createElement('div'); meta.className = 'meta';
+  meta.innerHTML = `<span class="outcome">● ${res.outcome}</span>${res.ms ? `<span>${res.ms} ms</span>` : ''}<span>${res.trace.length} steps</span><span>answer: ${res.composer}</span>`;
+  if (res.ticket) {
+    meta.innerHTML += `<span>${res.ticket}</span>`;
+    for (const [label, ok] of [['✓ Resolved', true], ['✗ Not resolved', false]]) {
+      const b = document.createElement('button'); b.textContent = label;
+      b.onclick = async () => { const o = await api('/api/feedback', {tenant: state.tenant, ticket_id: res.ticket, resolved: ok});
+        b.parentElement.querySelectorAll('button').forEach(x => x.remove());
+        meta.insertAdjacentHTML('beforeend', `<span>${o.status}${o.procedure ? ` · playbook "${o.procedure}" now ${o.successes}/${o.successes + o.failures}` : ''}</span>`);
+        refreshMemory(); };
+      meta.appendChild(b);
+    }
+  }
+  addMsg('agent', res.agent, res.answer, meta);
+  renderMemory(res.memory); renderTrace(res.trace);
+  net = drawGraph($('#net'), res.graph);
+  if ($('#pane-mem').classList.contains('on')) refreshMemory();
+}
+
+async function refreshMemory() {
+  if (!state.customer) return;
+  const m = await api(`/api/memory/${state.tenant}/${state.customer}`);
+  renderMemory(m.memory);
+  if ($('#pane-mem').classList.contains('on')) memnet = drawGraph($('#memnet'), m.graph);
+}
+
+async function newSession() {
+  $('#log').innerHTML = '';
+  const res = await api('/api/session', {tenant: state.tenant, customer_id: state.customer});
+  state.session = res.session_id;
+  handle(res);
+}
+
+function fillCustomers() {
+  const t = state.tenants.find(x => x.id === state.tenant);
+  $('#customer').innerHTML = t.customers.map(c => `<option value="${c.id}">${esc(c.name)} · ${c.plan} · ${c.region}</option>`).join('');
+  state.customer = t.customers[0].id;
+}
+
+async function init() {
+  const cfg = await api('/api/config');
+  $('#llm').textContent = cfg.provider === 'offline' ? 'LLM: offline rules (no key)' : `LLM: ${cfg.provider} · ${cfg.model}`;
+  state.tenants = await api('/api/tenants');
+  $('#tenant').innerHTML = state.tenants.map(t => `<option value="${t.id}">${esc(t.company)}</option>`).join('');
+  state.tenant = state.tenants[0].id; fillCustomers();
+  $('#chips').innerHTML = SUGGEST.map(s => `<button type="button">${esc(s)}</button>`).join('');
+  $('#chips').onclick = e => { if (e.target.tagName === 'BUTTON') { $('#input').value = e.target.textContent; $('#form').requestSubmit(); } };
+  await newSession();
+}
+
+$('#tenant').onchange = e => { state.tenant = e.target.value; fillCustomers(); newSession(); };
+$('#customer').onchange = e => { state.customer = e.target.value; newSession(); };
+$('#newSession').onclick = newSession;
+$('#reset').onclick = async () => { await api('/api/reset', {}); state.tenants = await api('/api/tenants'); newSession(); };
+$('#form').onsubmit = async e => {
+  e.preventDefault();
+  const text = $('#input').value.trim(); if (!text) return;
+  $('#input').value = ''; addMsg('customer', null, text);
+  const wait = addMsg('agent', 'triage', 'Reading memory and walking the graph…');
+  try { const res = await api('/api/chat', {tenant: state.tenant, customer_id: state.customer, session_id: state.session, message: text}); wait.remove(); handle(res); }
+  catch (err) { wait.textContent = 'Error: ' + err.message; }
+};
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + b.dataset.pane));
+  if (b.dataset.pane === 'mem') refreshMemory();
+  if (b.dataset.pane === 'path' && net) net.fit();
+});
+init();
+</script>
+</body>
+</html>
