@@ -324,7 +324,9 @@ def compose(agent: str, name: str, text: str, results: dict, recalled: dict, act
                     "actions_taken": actions, "procedure": procedure}, default=str),
         max_tokens=2000,
     )
-    if out and path_check(out, trace, json.dumps(recalled, default=str)):
+    if out is None:
+        return fallback, "rules (LLM unavailable)"
+    if path_check(out, trace, json.dumps(recalled, default=str)):
         return out, f"{llm.provider()}:{llm.model_name()}"
     trace.add(agent, "path check failed", "LLM answer named something not in the graph; used graph-built answer")
     return fallback, "rules (path check)"

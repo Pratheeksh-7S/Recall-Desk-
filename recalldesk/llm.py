@@ -9,8 +9,11 @@ graph is still doing all the work).
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
+
+log = logging.getLogger("recalldesk.llm")
 
 DEFAULT_MODELS = {
     "anthropic": "claude-opus-5-5",
@@ -90,9 +93,14 @@ def available() -> bool:
 
 
 def text(system: str, user: str, max_tokens: int = 2000) -> str | None:
+    """None means "no model answer": callers then fall back to rules and graph-built answers."""
     if not available():
         return None
-    return _BACKENDS[provider()](system, user, max_tokens).strip()
+    try:
+        return _BACKENDS[provider()](system, user, max_tokens).strip()
+    except Exception as e:  # bad key, network, rate limit: the desk keeps working on the graph alone
+        log.warning("LLM call failed (%s), falling back to rules: %s", provider(), e)
+        return None
 
 
 def json_call(system: str, user: str, max_tokens: int = 2000) -> dict | None:

@@ -44,6 +44,12 @@ def _tenant(tenant: str) -> str:
     return tenant
 
 
+def _customer(tenant: str, customer_id: str) -> str:
+    if not db.run(tenant, "MATCH (c:Customer {id:$id}) RETURN c.id", {"id": customer_id}, read_only=True).rows:
+        raise HTTPException(404, f"unknown customer {customer_id}")
+    return customer_id
+
+
 @app.get("/api/config")
 def config():
     return {"provider": llm.provider(), "model": llm.model_name()}
@@ -64,6 +70,7 @@ def tenants():
 @app.post("/api/session")
 def new_session(body: SessionIn):
     t = _tenant(body.tenant)
+    _customer(t, body.customer_id)
     sid = memory.start_session(t, body.customer_id)
     return {"session_id": sid, **agents.greet(t, body.customer_id, sid)}
 
@@ -71,6 +78,7 @@ def new_session(body: SessionIn):
 @app.post("/api/chat")
 def chat(body: ChatIn):
     t = _tenant(body.tenant)
+    _customer(t, body.customer_id)
     if not body.message.strip():
         raise HTTPException(400, "empty message")
     return agents.handle_message(t, body.session_id, body.customer_id, body.message.strip()[:2000])
