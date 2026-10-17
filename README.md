@@ -76,6 +76,12 @@ uvicorn recalldesk.server:app --port 8000
 
 To use FalkorDB Cloud instead, set `FALKORDB_URL=redis://user:password@host:port`.
 
+### Deploy (Render + FalkorDB Cloud)
+
+1. Create a free FalkorDB Cloud instance at [app.falkordb.cloud](https://app.falkordb.cloud) and copy its host, port, username and password.
+2. On [Render](https://render.com): **New > Blueprint**, pick this repo. Render reads [`render.yaml`](render.yaml) and asks for `FALKORDB_HOST`, `FALKORDB_PORT`, `FALKORDB_USERNAME`, `FALKORDB_PASSWORD` (and optionally `ANTHROPIC_API_KEY`). Set `FALKORDB_TLS=true` if your instance requires TLS.
+3. Deploy. The app seeds the demo data into FalkorDB on first start.
+
 ### Tests and the concurrency check
 
 ```bash

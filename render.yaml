@@ -1,0 +1,20 @@
+# Render Blueprint: New > Blueprint > pick this repo. Fill in the FalkorDB Cloud values when asked.
+services:
+  - type: web
+    name: recall-desk
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/config
+    envVars:
+      - key: FALKORDB_HOST
+        sync: false
+      - key: FALKORDB_PORT
+        sync: false
+      - key: FALKORDB_USERNAME
+        sync: false
+      - key: FALKORDB_PASSWORD
+        sync: false
+      - key: FALKORDB_TLS
+        value: "false"
+      - key: ANTHROPIC_API_KEY
+        sync: false
