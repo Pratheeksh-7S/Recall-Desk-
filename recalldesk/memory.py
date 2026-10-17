@@ -85,11 +85,12 @@ def remember(tenant: str, customer_id: str, session_id: str, agent: str, kind: s
     return r.rows[0]["id"] if r.rows else None
 
 
-def recall(tenant: str, customer_id: str) -> db.QueryResult:
-    """Everything the desk remembers about a customer, from any past session and any agent."""
+def recall(tenant: str, customer_id: str, limit: int = 25) -> db.QueryResult:
+    """What the desk remembers about a customer (most recent first), from any past session and any agent."""
     return db.run(tenant, """
         MATCH (c:Customer {id:$cid})
         OPTIONAL MATCH mp=(c)-[:HAS_MEMORY]->(m:Memory)-[:WRITTEN_BY]->(a:Agent)
+        WITH c, m, a, mp ORDER BY coalesce(m.last_seen, m.created) DESC LIMIT $limit
         WITH c, collect(DISTINCT {kind:m.kind, text:m.text, by:a.name, at:m.created, hits:m.hits}) AS memories,
              collect(mp) AS mpaths
         OPTIONAL MATCH tp=(c)-[:OPENED]->(t:Ticket)-[:ASSIGNED_TO]->(owner:Agent)
@@ -99,7 +100,7 @@ def recall(tenant: str, customer_id: str) -> db.QueryResult:
         RETURN [x IN memories WHERE x.text IS NOT NULL] AS memories,
                [x IN tickets WHERE x.id IS NOT NULL] AS tickets,
                count(DISTINCT s) AS sessions, mpaths, tpaths
-    """, {"cid": customer_id}, read_only=True)
+    """, {"cid": customer_id, "limit": limit}, read_only=True)
 
 
 # --- procedural ------------------------------------------------------------
