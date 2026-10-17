@@ -1,0 +1,32 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      falkordb:
+        image: falkordb/falkordb:latest
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Wait for FalkorDB
+        run: |
+          for i in $(seq 1 30); do
+            python -c "from falkordb import FalkorDB; FalkorDB().list_graphs()" && exit 0
+            sleep 2
+          done
+          exit 1
+      - name: End-to-end tests
+        run: python -m pytest -q
+      - name: Concurrency and isolation check
+        run: python scripts/concurrency.py --threads 8 --ops 100
