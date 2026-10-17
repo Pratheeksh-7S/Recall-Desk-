@@ -79,6 +79,9 @@ def new_session(body: SessionIn):
 def chat(body: ChatIn):
     t = _tenant(body.tenant)
     _customer(t, body.customer_id)
+    if not db.run(t, "MATCH (:Session {id:$s})-[:WITH]->(:Customer {id:$c}) RETURN 1",
+                  {"s": body.session_id, "c": body.customer_id}, read_only=True).rows:
+        raise HTTPException(409, "session does not belong to this customer")
     if not body.message.strip():
         raise HTTPException(400, "empty message")
     return agents.handle_message(t, body.session_id, body.customer_id, body.message.strip()[:2000])

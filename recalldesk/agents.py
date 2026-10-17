@@ -131,7 +131,9 @@ def understand(text: str, vocab: dict, history: list[dict], recalled: dict) -> d
     if isinstance(out.get("summary"), str):
         result["summary"] = out["summary"][:160]
     if isinstance(out.get("facts"), list):
-        result["facts"] = [f for f in out["facts"] if isinstance(f, dict) and f.get("text")][:3]
+        result["facts"] = [{"kind": f.get("kind") if f.get("kind") in ("preference", "context") else "context",
+                            "text": str(f["text"])[:200]}
+                           for f in out["facts"] if isinstance(f, dict) and f.get("text")][:3]
     return result
 
 

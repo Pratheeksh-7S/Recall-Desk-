@@ -132,12 +132,14 @@ function addMsg(role, agent, text, meta) {
 
 function renderMemory(m) {
   const mem = m.memories || [], tk = m.tickets || [];
-  $('#memories').innerHTML = mem.length ? mem.map(x => `<div class="mem"><span class="kind k-${x.kind}">${x.kind}</span>${esc(x.text)}<small>written by ${x.by} agent${x.hits > 1 ? ` · seen ${x.hits}×` : ''}</small></div>`).join('') : '<div class="hint">No memories yet.</div>';
-  $('#tickets').innerHTML = tk.length ? tk.map(t => `<div class="mem"><span class="kind k-${t.status}">${t.status}</span>${esc(t.summary)}<small>${t.id} · ${t.topic} · owner: ${t.owner}</small></div>`).join('') : '<div class="hint">No tickets yet.</div>';
+  $('#memories').innerHTML = mem.length ? mem.map(x => `<div class="mem"><span class="kind k-${esc(x.kind)}">${esc(x.kind)}</span>${esc(x.text)}<small>written by ${esc(x.by)} agent${x.hits > 1 ? ` · seen ${x.hits}×` : ''}</small></div>`).join('') : '<div class="hint">No memories yet.</div>';
+  $('#tickets').innerHTML = tk.length ? tk.map(t => `<div class="mem"><span class="kind k-${esc(t.status)}">${esc(t.status)}</span>${esc(t.summary)}<small>${esc(t.id)} · ${esc(t.topic)} · owner: ${esc(t.owner)}</small></div>`).join('') : '<div class="hint">No tickets yet.</div>';
 }
 
-function drawGraph(el, g, highlight) {
-  if (!g || !g.nodes.length) { el.innerHTML = '<div class="hint">No graph elements for this step.</div>'; return null; }
+function drawGraph(el, g, old, legend) {
+  if (old) old.destroy();
+  if (legend) legend.innerHTML = '';
+  if (!g || !g.nodes.length) { el.innerHTML = '<div class="hint">No graph elements for this answer.</div>'; return null; }
   el.innerHTML = '';
   const nodes = g.nodes.map(n => ({id: n.id, label: n.caption.length > 28 ? n.caption.slice(0, 26) + '…' : n.caption,
     title: n.label + '\n' + Object.entries(n.props).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(' → ') : v}`).join('\n'),
@@ -148,13 +150,13 @@ function drawGraph(el, g, highlight) {
   const nw = new vis.Network(el, {nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges)},
     {physics: {solver: 'forceAtlas2Based', forceAtlas2Based: {gravitationalConstant: -60, springLength: 110}, stabilization: {iterations: 150}},
      interaction: {hover: true, tooltipDelay: 80}});
-  $('#legend').innerHTML = [...new Set(g.nodes.map(n => n.label))].map(l => `<span><i style="background:${COLORS[l] || '#888'}"></i>${l}</span>`).join('');
+  if (legend) legend.innerHTML = [...new Set(g.nodes.map(n => n.label))].map(l => `<span><i style="background:${COLORS[l] || '#888'}"></i>${esc(l)}</span>`).join('');
   return nw;
 }
 
 function renderTrace(steps) {
   $('#trace').innerHTML = steps.map((s, i) => `<div class="step ${s.kind}">
-    <div class="h"><span class="who ${s.agent}">${s.agent}</span><span class="a">${i + 1}. ${esc(s.action)}${s.tool ? ` · <code>${s.tool}</code>` : ''}</span>
+    <div class="h"><span class="who ${esc(s.agent)}">${esc(s.agent)}</span><span class="a">${i + 1}. ${esc(s.action)}${s.tool ? ` · <code>${esc(s.tool)}</code>` : ''}</span>
     ${s.ms != null ? `<span class="badge">${s.ms} ms · ${s.row_count} rows</span>` : ''}${s.kind === 'write' ? '<span class="badge">graph write</span>' : ''}</div>
     <div class="d">${esc(s.detail)}</div>
     ${s.cypher ? `<details><summary>Cypher + params</summary><pre>${esc(s.cypher)}\n\n${esc(JSON.stringify(s.params))}</pre></details>` : ''}
@@ -164,41 +166,54 @@ function renderTrace(steps) {
 
 function handle(res) {
   const meta = document.createElement('div'); meta.className = 'meta';
-  meta.innerHTML = `<span class="outcome">● ${res.outcome}</span>${res.ms ? `<span>${res.ms} ms</span>` : ''}<span>${res.trace.length} steps</span><span>answer: ${res.composer}</span>`;
+  meta.innerHTML = `<span class="outcome">● ${esc(res.outcome)}</span>${res.ms != null ? `<span>${res.ms} ms</span>` : ''}<span>${res.trace.length} steps</span><span>answer: ${esc(res.composer)}</span>`;
   if (res.ticket) {
-    meta.innerHTML += `<span>${res.ticket}</span>`;
+    meta.insertAdjacentHTML('beforeend', `<span>${esc(res.ticket)}</span>`);
     for (const [label, ok] of [['✓ Resolved', true], ['✗ Not resolved', false]]) {
       const b = document.createElement('button'); b.textContent = label;
-      b.onclick = async () => { const o = await api('/api/feedback', {tenant: state.tenant, ticket_id: res.ticket, resolved: ok});
-        b.parentElement.querySelectorAll('button').forEach(x => x.remove());
-        meta.insertAdjacentHTML('beforeend', `<span>${o.status}${o.procedure ? ` · playbook "${o.procedure}" now ${o.successes}/${o.successes + o.failures}` : ''}</span>`);
-        refreshMemory(); };
+      b.onclick = async () => {
+        const btns = [...meta.querySelectorAll('button')]; btns.forEach(x => x.disabled = true);
+        try {
+          const o = await api('/api/feedback', {tenant: res.tenant, ticket_id: res.ticket, resolved: ok});
+          btns.forEach(x => x.remove());
+          meta.insertAdjacentHTML('beforeend', `<span>${esc(o.status)}${o.procedure ? ` · playbook "${esc(o.procedure)}" now ${o.successes}/${o.successes + o.failures} wins` : ''}</span>`);
+          refreshMemory();
+        } catch (err) { btns.forEach(x => x.disabled = false); meta.insertAdjacentHTML('beforeend', `<span>feedback failed</span>`); }
+      };
       meta.appendChild(b);
     }
   }
   addMsg('agent', res.agent, res.answer, meta);
   renderMemory(res.memory); renderTrace(res.trace);
-  net = drawGraph($('#net'), res.graph);
+  net = drawGraph($('#net'), res.graph, net, $('#legend'));
   if ($('#pane-mem').classList.contains('on')) refreshMemory();
 }
 
 async function refreshMemory() {
   if (!state.customer) return;
-  const m = await api(`/api/memory/${state.tenant}/${state.customer}`);
+  const cust = state.customer;
+  const m = await api(`/api/memory/${state.tenant}/${cust}`); m.customer = cust;
   renderMemory(m.memory);
-  if ($('#pane-mem').classList.contains('on')) memnet = drawGraph($('#memnet'), m.graph);
+  if (m.customer !== state.customer) return;
+  if ($('#pane-mem').classList.contains('on')) memnet = drawGraph($('#memnet'), m.graph, memnet);
 }
 
+let gen = 0;  // bumps on every new session; replies from an older session are dropped
 async function newSession() {
+  const my = ++gen;
+  state.session = null;
   $('#log').innerHTML = '';
-  const res = await api('/api/session', {tenant: state.tenant, customer_id: state.customer});
-  state.session = res.session_id;
-  handle(res);
+  try {
+    const res = await api('/api/session', {tenant: state.tenant, customer_id: state.customer});
+    if (my !== gen) return;
+    state.session = res.session_id; res.tenant = state.tenant;
+    handle(res);
+  } catch (err) { if (my === gen) addMsg('agent', 'triage', 'Could not start a session: ' + err.message); }
 }
 
 function fillCustomers() {
   const t = state.tenants.find(x => x.id === state.tenant);
-  $('#customer').innerHTML = t.customers.map(c => `<option value="${c.id}">${esc(c.name)} · ${c.plan} · ${c.region}</option>`).join('');
+  $('#customer').innerHTML = t.customers.map(c => `<option value="${esc(c.id)}">${esc(c.name)} · ${esc(c.plan)} · ${esc(c.region)}</option>`).join('');
   state.customer = t.customers[0].id;
 }
 
@@ -206,7 +221,7 @@ async function init() {
   const cfg = await api('/api/config');
   $('#llm').textContent = cfg.provider === 'offline' ? 'LLM: offline rules (no key)' : `LLM: ${cfg.provider} · ${cfg.model}`;
   state.tenants = await api('/api/tenants');
-  $('#tenant').innerHTML = state.tenants.map(t => `<option value="${t.id}">${esc(t.company)}</option>`).join('');
+  $('#tenant').innerHTML = state.tenants.map(t => `<option value="${esc(t.id)}">${esc(t.company)}</option>`).join('');
   state.tenant = state.tenants[0].id; fillCustomers();
   $('#chips').innerHTML = SUGGEST.map(s => `<button type="button">${esc(s)}</button>`).join('');
   $('#chips').onclick = e => { if (e.target.tagName === 'BUTTON') { $('#input').value = e.target.textContent; $('#form').requestSubmit(); } };
@@ -217,19 +232,23 @@ $('#tenant').onchange = e => { state.tenant = e.target.value; fillCustomers(); n
 $('#customer').onchange = e => { state.customer = e.target.value; newSession(); };
 $('#newSession').onclick = newSession;
 $('#reset').onclick = async () => { await api('/api/reset', {}); state.tenants = await api('/api/tenants'); newSession(); };
+let busy = false;
 $('#form').onsubmit = async e => {
   e.preventDefault();
-  const text = $('#input').value.trim(); if (!text) return;
+  const text = $('#input').value.trim(); if (!text || busy || !state.session) return;
+  busy = true; $('#form button').disabled = true;
+  const my = gen, ctx = {tenant: state.tenant, customer_id: state.customer, session_id: state.session, message: text};
   $('#input').value = ''; addMsg('customer', null, text);
   const wait = addMsg('agent', 'triage', 'Reading memory and walking the graph…');
-  try { const res = await api('/api/chat', {tenant: state.tenant, customer_id: state.customer, session_id: state.session, message: text}); wait.remove(); handle(res); }
-  catch (err) { wait.textContent = 'Error: ' + err.message; }
+  try { const res = await api('/api/chat', ctx); if (my === gen) { wait.remove(); res.tenant = ctx.tenant; handle(res); } }
+  catch (err) { if (my === gen) wait.textContent = 'Error: ' + err.message; }
+  finally { busy = false; $('#form button').disabled = false; }
 };
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
   document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + b.dataset.pane));
   if (b.dataset.pane === 'mem') refreshMemory();
-  if (b.dataset.pane === 'path' && net) net.fit();
+  if (b.dataset.pane === 'path' && net) { net.redraw(); net.fit(); }
 });
 init();
 </script>
