@@ -1,0 +1,25 @@
+services:
+  falkordb:
+    image: falkordb/falkordb:latest
+    ports:
+      - "6379:6379"   # Redis protocol
+      - "3000:3000"   # FalkorDB Browser: inspect the graphs at http://localhost:3000
+    volumes:
+      - falkordb-data:/var/lib/falkordb/data
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      FALKORDB_HOST: falkordb
+      FALKORDB_PORT: "6379"
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    depends_on:
+      - falkordb
+    restart: on-failure
+volumes:
+  falkordb-data:
