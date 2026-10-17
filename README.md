@@ -15,7 +15,7 @@ Every answer comes with the graph path behind it.
 
 ![Graph path behind an answer](docs/graph-path.png)
 
-**Demo video:** _add the YouTube link here_ (2 minutes, captioned; regenerate with `scripts/record_demo.cjs`)
+**Demo video:** [docs/demo.mp4](https://github.com/Pratheeksh-7S/Recall-Desk-/raw/main/docs/demo.mp4) (2 minutes, captioned; regenerate with `scripts/record_demo.cjs`)
 
 ## Why the graph is load-bearing
 
