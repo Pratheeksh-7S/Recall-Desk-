@@ -31,10 +31,10 @@ def connect() -> FalkorDB:
             _db = FalkorDB.from_url(url)
         else:
             _db = FalkorDB(
-                host=os.getenv("FALKORDB_HOST", "localhost"),
-                port=int(os.getenv("FALKORDB_PORT", "6379")),
-                username=os.getenv("FALKORDB_USERNAME") or None,
-                password=os.getenv("FALKORDB_PASSWORD") or None,
+                host=os.getenv("FALKORDB_HOST", "localhost").strip(),
+                port=int(os.getenv("FALKORDB_PORT", "6379").strip()),
+                username=(os.getenv("FALKORDB_USERNAME") or "").strip() or None,
+                password=(os.getenv("FALKORDB_PASSWORD") or "").strip() or None,
                 ssl=os.getenv("FALKORDB_TLS", "").lower() in ("1", "true", "yes"),
             )
     return _db
