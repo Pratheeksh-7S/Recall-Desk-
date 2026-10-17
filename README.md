@@ -13,6 +13,8 @@ Every answer comes with the graph path behind it.
 
 ![Graph path behind an answer](docs/graph-path.png)
 
+**Demo video:** _add the YouTube link here_ (2 minutes, captioned; regenerate with `scripts/record_demo.cjs`)
+
 ## Why the graph is load-bearing
 
 Take FalkorDB away and nothing works. There is no other store: no SQL tables, no vector DB, and no
