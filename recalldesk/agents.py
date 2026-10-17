@@ -346,10 +346,11 @@ def greet(tenant: str, customer_id: str, session_id: str) -> dict:
     first = name.split()[0]
     if rec["sessions"] > 1 and (rec["memories"] or rec["tickets"]):
         open_t = [t for t in rec["tickets"] if t["status"] in ("open", "reopened")]
-        promises = sorted((m for m in rec["memories"] if m["kind"] in ("promise", "fact")), key=lambda m: m["at"] or "")
+        promises = sorted((m for m in rec["memories"] if m["kind"] in ("promise", "fact")), key=lambda m: m["at"] or "", reverse=True)
         msg = f"Welcome back, {first}."
+        promises.sort(key=lambda m: m["kind"] != "promise")  # what we promised matters most
         if promises:
-            msg += f" Last time: {promises[-1]['text']}."
+            msg += " Last time: " + "; ".join(m["text"] for m in promises[:2]) + "."
         if open_t:
             msg += f" You have {len(open_t)} open ticket(s)."
         prefs = [m for m in rec["memories"] if m["kind"] == "preference"]

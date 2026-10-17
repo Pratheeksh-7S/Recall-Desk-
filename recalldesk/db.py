@@ -65,7 +65,17 @@ class QueryResult:
 def _node_view(n: Node) -> dict:
     props = dict(n.properties)
     label = n.labels[0] if n.labels else "Node"
-    caption = props.get("name") or props.get("title") or props.get("id") or props.get("text", "")[:40]
+    if label == "Memory":
+        caption = props.get("text", "")
+    elif label == "Session":
+        caption = "session " + str(props.get("started", ""))[5:16].replace("T", " ")
+    elif label == "Handoff":
+        caption = "handoff: " + str(props.get("reason", ""))
+    elif label == "Turn":
+        caption = f"{props.get('agent')}: {props.get('text', '')}"
+    else:
+        caption = props.get("name") or props.get("title") or props.get("id") or ""
+    caption = str(caption)
     return {"id": n.id, "label": label, "caption": str(caption), "props": props}
 
 

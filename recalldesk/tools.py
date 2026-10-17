@@ -143,8 +143,9 @@ _tool(
     MATCH p=(t:Ticket)-[:ABOUT]->(of:Feature)-[:DEPENDS_ON*1..6]->(s)
     MATCH (other:Customer)-[:OPENED]->(t)
     WHERE other.id <> $customer_id
-    RETURN DISTINCT t.id AS ticket, other.name AS customer, of.name AS feature, s.name AS shared_service, t.status AS status
-    LIMIT 10
+    RETURN t.id AS ticket, other.name AS customer, of.name AS feature, collect(DISTINCT s.name) AS shared_services,
+           t.status AS status
+    ORDER BY ticket LIMIT 10
     """,
 )
 
