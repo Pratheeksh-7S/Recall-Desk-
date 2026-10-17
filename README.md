@@ -1,5 +1,7 @@
 # Recall Desk
 
+[![tests](https://github.com/Pratheeksh-7S/Recall-Desk-/actions/workflows/tests.yml/badge.svg)](https://github.com/Pratheeksh-7S/Recall-Desk-/actions/workflows/tests.yml)
+
 **A support desk where three AI agents share one memory, and that memory is a FalkorDB graph.**
 
 A triage agent, a billing agent and a technical agent answer customers together. They never pass
