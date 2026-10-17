@@ -15,6 +15,8 @@ Every answer comes with the graph path behind it.
 
 ![Graph path behind an answer](docs/graph-path.png)
 
+**Live demo:** https://recall-desk.onrender.com (Render free tier + FalkorDB Cloud; the first load can take about a minute while the server wakes up)
+
 **Demo video:** [docs/demo.mp4](https://github.com/Pratheeksh-7S/Recall-Desk-/raw/main/docs/demo.mp4) (2 minutes, captioned; regenerate with `scripts/record_demo.cjs`)
 
 ## Why the graph is load-bearing
